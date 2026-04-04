@@ -1,0 +1,3 @@
+[submodule "tests/aes-python"]
+	path = tests/aes-python
+	url = https://github.com/boppreh/aes
