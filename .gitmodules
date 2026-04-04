@@ -1,3 +1,0 @@
-[submodule "tests/python-aes"]
-	path = tests/python-aes
-	url = https://github.com/j-serrano12/aes-c-implementation
