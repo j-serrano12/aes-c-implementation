@@ -112,8 +112,39 @@ void sub_bytes(unsigned char *block, aes_block_size_t block_size) {
   }
 }
 
+
+//  We aew going to immplement the shift rows function by shifting the rows of our block to the left by a certain amount. The first row is not shifted, the second row is shifted by 1, the third row is shifted by 2, and the fourth row is shifted by 3. This is done to create diffusion in our block, which makes it more resistant to cryptanalysis.
+
 void shift_rows(unsigned char *block, aes_block_size_t block_size) {
-  // TODO: Implement me!
+  // Focusing on the 128 bit first
+
+  if(block_size == AES_BLOCK_128){
+    unsigned char temp, temp2;
+
+    // First row is not shifted
+    // Second row is shifted by 1
+    temp = block[4];
+    block[4] = block[5];
+    block[5] = block[6];
+    block[6] = block[7];
+    block[7] = temp;
+
+    // Third row is shifted by 2
+    temp = block[8];
+    temp2 = block[9];
+    block[8] = block[10];
+    block[9] = block[11];
+    block[10] = temp;
+    block[11] = temp2;
+
+    // Fourth row is shifted by 3
+    // This is the same as shifting by 1 to the right
+    temp = block[15];
+    block[15] = block[14];
+    block[14] = block[13];
+    block[13] = block[12];
+    block[12] = temp;
+  }
 }
 
 void mix_columns(unsigned char *block, aes_block_size_t block_size) {
@@ -135,8 +166,37 @@ void invert_sub_bytes(unsigned char *block, aes_block_size_t block_size) {
   }
 }
 
+// This will be the opposite of the shift rows function, so we will shift the rows to the right instead of to the left
 void invert_shift_rows(unsigned char *block, aes_block_size_t block_size) {
-  // TODO: Implement me!
+  // Focusing on the 128 bit first
+
+  if(block_size == AES_BLOCK_128){
+    unsigned char temp, temp2;
+
+    // First row is not shifted
+    // Second row is shifted by 1 to the right
+    temp = block[7];
+    block[7] = block[6];
+    block[6] = block[5];
+    block[5] = block[4];
+    block[4] = temp;
+
+    // Third row is shifted by 2 to the right
+    temp = block[10];
+    temp2 = block[11];
+    block[10] = block[8];
+    block[11] = block[9];
+    block[8] = temp;
+    block[9] = temp2;
+
+    // Fourth row is shifted by 3 to the right
+    // This is the same as shifting by 1 to the left
+    temp = block[12];
+    block[12] = block[13];
+    block[13] = block[14];
+    block[14] = block[15];
+    block[15] = temp;
+  }
 }
 
 void invert_mix_columns(unsigned char *block, aes_block_size_t block_size) {
