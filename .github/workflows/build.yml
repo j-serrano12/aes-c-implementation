@@ -6,6 +6,8 @@ jobs:
     steps:
       - name: Clone the repo
         uses: actions/checkout@v4
+        with:
+          submodules: true # This is important to get the test files from the submodule
       
       - name: Build the code
         run: |
