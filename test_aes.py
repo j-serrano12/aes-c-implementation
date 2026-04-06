@@ -34,7 +34,9 @@ def test_sub_bytes_128():
     c_output = list(extracted_bytes)
 
     # Perform the same operation using the Python implementation
-    python_output = [aes.s_box[b] for b in original_bytes]
+    matrix = aes.bytes2matrix(original_bytes)
+    aes.sub_bytes(matrix)
+    python_output = list(aes.matrix2bytes(matrix))
 
     # Compare the results
     if c_output == python_output:
@@ -57,14 +59,39 @@ def test_shift_rows_128():
     extracted_bytes = ctypes.string_at(block, 16)
     c_output = list(extracted_bytes)
 
-    # Convert the original bytes to a 4x4 matrix (AES-128 block is 4x4), bescause the shift_rows operation works on the rows of the matrix
-    matrix = [list(original_bytes[i:i+4]) for i in range(0, 16, 4)]
+    # Convert to matrix, apply operation, then convert back to bytes
+    matrix = aes.bytes2matrix(original_bytes)
 
     # Perform the same operation using the Python implementation
     aes.shift_rows(matrix)
 
-    # Flatten the matrix back to a list of integers
-    python_output = [byte for row in matrix for byte in row]
+    python_output = list(aes.matrix2bytes(matrix))
+
+    # Compare the results
+    if c_output == python_output:
+        print("Test passed: C and Python implementations produce the same result.")
+    else:
+        print("Test failed: C and Python implementations produce different results.")
+
+
+def test_mix_columns_128():
+    print("Testing mix_columns for AES-128: ")
+
+    # Create a block of 16 bytes (AES-128 block size)
+    original_bytes = bytes(range(16))
+    block = ctypes.create_string_buffer(original_bytes)
+
+    # Call the C function to perform the mix_columns operation
+    rijndael.mix_columns(block, 0)  # 0 corresponds to AES-128
+
+    # Read 16 bytes back from memory and convert to list
+    extracted_bytes = ctypes.string_at(block, 16)
+    c_output = list(extracted_bytes)
+
+    # Perform the same operation using the Python implementation
+    matrix = aes.bytes2matrix(original_bytes)
+    aes.mix_columns(matrix)
+    python_output = list(aes.matrix2bytes(matrix))
 
     # Compare the results
     if c_output == python_output:
@@ -76,3 +103,4 @@ def test_shift_rows_128():
 if __name__ == "__main__":
     test_sub_bytes_128()
     test_shift_rows_128()
+    test_mix_columns_128()
