@@ -146,8 +146,40 @@ void shift_rows(unsigned char *block, aes_block_size_t block_size) {
   }
 }
 
+// This is the mix columns step, which is a linear transformation that mixes the columns of the block //together.The mix columns step is a matrix multiplication of the block with a fixed matrix, which can be implemented using bitwise operations and XORs.
+
+// Multiplies by 2 in Galois Field (shifts left, XORs with 0x1B if the highest bit is set)
+#define xtime(x) ((x & 0x80) ? ((x << 1) ^ 0x1B) : (x << 1))
+
+
 void mix_columns(unsigned char *block, aes_block_size_t block_size) {
-  // TODO: Implement me!
+  // Using the provided block_size_to_bytes, to figure out how many bytes are in our block (16, 32, or 64)
+  size_t total_bytes = block_size_to_bytes(block_size);
+  // We will loop through each column of our block, and perform the matrix multiplication for that column
+  for (size_t i = 0; i < total_bytes; i += 4) {
+    // now we will take the 4 bytes in our column
+    unsigned char a0 = block[i + 0];
+    unsigned char a1 = block[i + 1];
+    unsigned char a2 = block[i + 2];
+    unsigned char a3 = block[i + 3];
+
+    // We need to learn the Galois field multiplication to do the matrix multiplication. In AES, we are working in GF(2^8), which means that we can represent our bytes as polynomials, and we can perform multiplication by using bitwise operations and XORs. To multiply by 2, we can use the xtime macro defined above.
+    // To multiply by 1, we just take the original value: x
+    // To multiply by 3, we multiply by 2 and XOR the original value: (xtime(x) ^ x)
+    // Reference for the matrix multiplication: https://en.wikipedia.org/wiki/Rijndael_MixColumns#MixColumns_step
+    
+    // New_a0 = (2 * a0) + (3 * a1) + a2 + a3
+    block[i + 0] = xtime(a0) ^ (xtime(a1) ^ a1) ^ a2 ^ a3;
+    
+    // New_a1 = a0 + (2 * a1) + (3 * a2) + a3
+    block[i + 1] = a0 ^ xtime(a1) ^ (xtime(a2) ^ a2) ^ a3;
+    
+    // New_a2 = a0 + a1 + (2 * a2) + (3 * a3)
+    block[i + 2] = a0 ^ a1 ^ xtime(a2) ^ (xtime(a3) ^ a3);
+    
+    // New_a3 = (3 * a0) + a1 + a2 + (2 * a3)
+    block[i + 3] = (xtime(a0) ^ a0) ^ a1 ^ a2 ^ xtime(a3);
+  }
 }
 
 /*
@@ -198,7 +230,65 @@ void invert_shift_rows(unsigned char *block, aes_block_size_t block_size) {
 }
 
 void invert_mix_columns(unsigned char *block, aes_block_size_t block_size) {
-  // TODO: Implement me!
+  size_t total_bytes = block_size_to_bytes(block_size);
+
+  for (size_t i = 0; i < total_bytes; i += 4) {
+    // now we will take the 4 bytes in our column
+    unsigned char a0 = block[i + 0];
+    unsigned char a1 = block[i + 1];
+    unsigned char a2 = block[i + 2];
+    unsigned char a3 = block[i + 3];
+
+    // Inverse MixColumns matrix uses multipliers 14, 11, 13 and 9 in GF(2^8).
+    // We build these from xtime (taht multiplies by 2):
+    // 9x = (8x) ^ x, 11x = (8x) ^ (2x) ^ x, 13x = (8x) ^ (4x) ^ x, 14x = (8x) ^ (4x) ^ (2x)
+    unsigned char a0_2 = xtime(a0);
+    unsigned char a1_2 = xtime(a1);
+    unsigned char a2_2 = xtime(a2);
+    unsigned char a3_2 = xtime(a3);
+
+    unsigned char a0_4 = xtime(a0_2);
+    unsigned char a1_4 = xtime(a1_2);
+    unsigned char a2_4 = xtime(a2_2);
+    unsigned char a3_4 = xtime(a3_2);
+
+    unsigned char a0_8 = xtime(a0_4);
+    unsigned char a1_8 = xtime(a1_4);
+    unsigned char a2_8 = xtime(a2_4);
+    unsigned char a3_8 = xtime(a3_4);
+
+    unsigned char a0_9  = a0_8 ^ a0;
+    unsigned char a1_9  = a1_8 ^ a1;
+    unsigned char a2_9  = a2_8 ^ a2;
+    unsigned char a3_9  = a3_8 ^ a3;
+
+    unsigned char a0_11 = a0_8 ^ a0_2 ^ a0;
+    unsigned char a1_11 = a1_8 ^ a1_2 ^ a1;
+    unsigned char a2_11 = a2_8 ^ a2_2 ^ a2;
+    unsigned char a3_11 = a3_8 ^ a3_2 ^ a3;
+
+    unsigned char a0_13 = a0_8 ^ a0_4 ^ a0;
+    unsigned char a1_13 = a1_8 ^ a1_4 ^ a1;
+    unsigned char a2_13 = a2_8 ^ a2_4 ^ a2;
+    unsigned char a3_13 = a3_8 ^ a3_4 ^ a3;
+
+    unsigned char a0_14 = a0_8 ^ a0_4 ^ a0_2;
+    unsigned char a1_14 = a1_8 ^ a1_4 ^ a1_2;
+    unsigned char a2_14 = a2_8 ^ a2_4 ^ a2_2;
+    unsigned char a3_14 = a3_8 ^ a3_4 ^ a3_2;
+
+    // New_a0 = (14 * a0) + (11 * a1) + (13 * a2) + (9 * a3)
+    block[i + 0] = a0_14 ^ a1_11 ^ a2_13 ^ a3_9;
+
+    // New_a1 = (9 * a0) + (14 * a1) + (11 * a2) + (13 * a3)
+    block[i + 1] = a0_9 ^ a1_14 ^ a2_11 ^ a3_13;
+
+    // New_a2 = (13 * a0) + (9 * a1) + (14 * a2) + (11 * a3)
+    block[i + 2] = a0_13 ^ a1_9 ^ a2_14 ^ a3_11;
+
+    // New_a3 = (11 * a0) + (13 * a1) + (9 * a2) + (14 * a3)
+    block[i + 3] = a0_11 ^ a1_13 ^ a2_9 ^ a3_14;
+  }
 }
 
 /*
