@@ -121,29 +121,28 @@ void shift_rows(unsigned char *block, aes_block_size_t block_size) {
   if(block_size == AES_BLOCK_128){
     unsigned char temp, temp2;
 
-    // First row is not shifted
-    // Second row is shifted by 1
-    temp = block[4];
-    block[4] = block[5];
-    block[5] = block[6];
-    block[6] = block[7];
-    block[7] = temp;
+    // First row is not shifted.
+    // Second row is shifted by 1 to the left across columns.
+    temp = block[1];
+    block[1] = block[5];
+    block[5] = block[9];
+    block[9] = block[13];
+    block[13] = temp;
 
-    // Third row is shifted by 2
-    temp = block[8];
-    temp2 = block[9];
-    block[8] = block[10];
-    block[9] = block[11];
+    // Third row is shifted by 2 to the left.
+    temp = block[2];
+    temp2 = block[6];
+    block[2] = block[10];
+    block[6] = block[14];
     block[10] = temp;
-    block[11] = temp2;
+    block[14] = temp2;
 
-    // Fourth row is shifted by 3
-    // This is the same as shifting by 1 to the right
-    temp = block[15];
-    block[15] = block[14];
-    block[14] = block[13];
-    block[13] = block[12];
-    block[12] = temp;
+    // Fourth row is shifted by 3 to the left (same as 1 right).
+    temp = block[3];
+    block[3] = block[15];
+    block[15] = block[11];
+    block[11] = block[7];
+    block[7] = temp;
   }
 }
 
@@ -173,28 +172,27 @@ void invert_shift_rows(unsigned char *block, aes_block_size_t block_size) {
   if(block_size == AES_BLOCK_128){
     unsigned char temp, temp2;
 
-    // First row is not shifted
-    // Second row is shifted by 1 to the right
-    temp = block[7];
-    block[7] = block[6];
-    block[6] = block[5];
-    block[5] = block[4];
-    block[4] = temp;
+    // First row is not shifted.
+    // Second row is shifted by 1 to the right across columns.
+    temp = block[13];
+    block[13] = block[9];
+    block[9] = block[5];
+    block[5] = block[1];
+    block[1] = temp;
 
-    // Third row is shifted by 2 to the right
-    temp = block[10];
-    temp2 = block[11];
-    block[10] = block[8];
-    block[11] = block[9];
-    block[8] = temp;
-    block[9] = temp2;
+    // Third row is shifted by 2 to the right.
+    temp = block[2];
+    temp2 = block[6];
+    block[2] = block[10];
+    block[6] = block[14];
+    block[10] = temp;
+    block[14] = temp2;
 
-    // Fourth row is shifted by 3 to the right
-    // This is the same as shifting by 1 to the left
-    temp = block[12];
-    block[12] = block[13];
-    block[13] = block[14];
-    block[14] = block[15];
+    // Fourth row is shifted by 3 to the right (same as 1 left).
+    temp = block[3];
+    block[3] = block[7];
+    block[7] = block[11];
+    block[11] = block[15];
     block[15] = temp;
   }
 }
