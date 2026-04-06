@@ -42,6 +42,37 @@ def test_sub_bytes_128():
     else:
         print("Test failed: C and Python implementations produce different results.")
 
+def test_shift_rows_128():
+    print("Testing shift_rows for AES-128: ")
+
+    # Create a block of 16 bytes (AES-128 block size)
+    original_bytes = bytes(range(16))
+    # With the help of the ctypes library, we can create a mutable buffer that we can pass to our C function
+    block = ctypes.create_string_buffer(original_bytes)
+
+    # Call the C function to perform the shift_rows operation
+    rijndael.shift_rows(block, 0)  # 0 corresponds to AES-128
+
+    # Read 16 bytes back from memory (ignores the hidden null-terminator coming from create_string_buffer) and convert it to a list of integers
+    extracted_bytes = ctypes.string_at(block, 16)
+    c_output = list(extracted_bytes)
+
+    # Convert the original bytes to a 4x4 matrix (AES-128 block is 4x4), bescause the shift_rows operation works on the rows of the matrix
+    matrix = [list(original_bytes[i:i+4]) for i in range(0, 16, 4)]
+
+    # Perform the same operation using the Python implementation
+    aes.shift_rows(matrix)
+
+    # Flatten the matrix back to a list of integers
+    python_output = [byte for row in matrix for byte in row]
+
+    # Compare the results
+    if c_output == python_output:
+        print("Test passed: C and Python implementations produce the same result.")
+    else:
+        print("Test failed: C and Python implementations produce different results.")
+
     # Execute the test
 if __name__ == "__main__":
     test_sub_bytes_128()
+    test_shift_rows_128()
