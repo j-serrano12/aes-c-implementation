@@ -297,7 +297,12 @@ void invert_mix_columns(unsigned char *block, aes_block_size_t block_size) {
 void add_round_key(unsigned char *block, 
                    unsigned char *round_key,
                    aes_block_size_t block_size) {
-  // TODO: Implement me!
+  size_t total_bytes = block_size_to_bytes(block_size);
+
+  // In this step we will XOR each byte of our block with the corresponding byte of our round key.
+  for (size_t i = 0; i < total_bytes; i++) {
+    block[i] ^= round_key[i];
+  }
 }
 
 /*
