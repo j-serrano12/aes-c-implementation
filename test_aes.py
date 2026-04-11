@@ -99,8 +99,35 @@ def test_mix_columns_128():
     else:
         print("Test failed: C and Python implementations produce different results.")
 
+
+def test_add_round_key_128():
+    print("Testing add_round_key for AES-128: ")
+
+    # Deterministic input block and round key (16 bytes each)
+    original_bytes = bytes(range(16))
+    round_key_bytes = bytes([0x0F] * 16)
+    block = ctypes.create_string_buffer(original_bytes)
+    round_key = ctypes.create_string_buffer(round_key_bytes)
+
+    # Call the C function to perform the add_round_key operation
+    rijndael.add_round_key(block, round_key, 0)  # 0 corresponds to AES-128
+
+    # Read 16 bytes back from memory and convert to list
+    extracted_bytes = ctypes.string_at(block, 16)
+    c_output = list(extracted_bytes)
+
+    # AddRoundKey is byte-wise XOR between state and round key
+    expected_output = [b ^ k for b, k in zip(original_bytes, round_key_bytes)]
+
+    # Compare the results
+    if c_output == expected_output:
+        print("Test passed: add_round_key produced the expected XOR result.")
+    else:
+        print("Test failed: add_round_key did not produce the expected XOR result.")
+
     # Execute the test
 if __name__ == "__main__":
     test_sub_bytes_128()
     test_shift_rows_128()
     test_mix_columns_128()
+    test_add_round_key_128()
