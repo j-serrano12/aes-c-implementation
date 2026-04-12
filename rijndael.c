@@ -310,9 +310,66 @@ void add_round_key(unsigned char *block,
  * which is a single 128-bit key, it should return a 176-byte
  * vector, containing the 11 round keys one after the other
  */
+// I am basing this on the following youtube video, which explains the key expansion algorithm in detail: https://www.youtube.com/watch?v=0RxLUf4fxs8
 unsigned char *expand_key(unsigned char *cipher_key, aes_block_size_t block_size) {
-  // TODO: Implement me!
-  return 0;
+  // For this function, we will only implement the 128 bit key expansion for now
+  if (block_size != AES_BLOCK_128) {
+    return NULL;
+  }
+  // The key expansion algorithm is as follows:
+  // The constant rcon is used in the key expansion algorithm, and it is defined as follows
+  static const unsigned char rcon[10] = {
+    0x01, 0x02, 0x04, 0x08, 0x10,
+    0x20, 0x40, 0x80, 0x1B, 0x36
+  };
+  // We will create an array to hold our expanded key, which will be 176 bytes long (11 round keys * 16 bytes each)
+  const size_t expanded_len = 176; // 11 round keys * 16 bytes
+  unsigned char *expanded_key = (unsigned char *)malloc(expanded_len);
+  if (expanded_key == NULL) {
+    return NULL;
+  }
+
+  // First 16 bytes are the original cipher key.
+  memcpy(expanded_key, cipher_key, 16);
+  // We will keep track of how many bytes we have generated so far, and we will generate bytes until we have generated the full expanded key.
+  size_t bytes_generated = 16;
+  size_t rcon_index = 0;
+  unsigned char temp[4];
+  // We will generate 4 bytes at a time, since our round keys are 16 bytes long, and we need to generate 11 round keys (including the original key).
+  while (bytes_generated < expanded_len) {
+    // We will take the last 4 bytes of the expanded key, and store it in a temporary array.
+    temp[0] = expanded_key[bytes_generated - 4];
+    temp[1] = expanded_key[bytes_generated - 3];
+    temp[2] = expanded_key[bytes_generated - 2];
+    temp[3] = expanded_key[bytes_generated - 1];
+    // If we have generated a multiple of 16 bytes, then we will perform the key schedule core on our temporary array, which involves rotating the bytes, applying the s-box, and XORing with the rcon value.
+    // This is also known as the g function in the key expansion algorithm.
+    if ((bytes_generated % 16) == 0) {
+      unsigned char rotated = temp[0];
+      temp[0] = temp[1];
+      temp[1] = temp[2];
+      temp[2] = temp[3];
+      temp[3] = rotated;
+
+      temp[0] = sbox[temp[0]];
+      temp[1] = sbox[temp[1]];
+      temp[2] = sbox[temp[2]];
+      temp[3] = sbox[temp[3]];
+
+      temp[0] ^= rcon[rcon_index++];
+    }
+    // We will then XOR the temporary array with the 4 bytes that are 16 bytes before the current position in the expanded key, and store the result in the expanded key.
+    expanded_key[bytes_generated] = expanded_key[bytes_generated - 16] ^ temp[0];
+    bytes_generated++;
+    expanded_key[bytes_generated] = expanded_key[bytes_generated - 16] ^ temp[1];
+    bytes_generated++;
+    expanded_key[bytes_generated] = expanded_key[bytes_generated - 16] ^ temp[2];
+    bytes_generated++;
+    expanded_key[bytes_generated] = expanded_key[bytes_generated - 16] ^ temp[3];
+    bytes_generated++;
+  }
+  // Once we have generated the full expanded key, we will return it.
+  return expanded_key;
 }
 
 /*

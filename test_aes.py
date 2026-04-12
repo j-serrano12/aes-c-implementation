@@ -41,8 +41,10 @@ def test_sub_bytes_128():
     # Compare the results
     if c_output == python_output:
         print("Test passed: C and Python implementations produce the same result.")
+        return True
     else:
         print("Test failed: C and Python implementations produce different results.")
+        return False
 
 def test_shift_rows_128():
     print("Testing shift_rows for AES-128: ")
@@ -70,8 +72,10 @@ def test_shift_rows_128():
     # Compare the results
     if c_output == python_output:
         print("Test passed: C and Python implementations produce the same result.")
+        return True
     else:
         print("Test failed: C and Python implementations produce different results.")
+        return False
 
 
 def test_mix_columns_128():
@@ -96,8 +100,10 @@ def test_mix_columns_128():
     # Compare the results
     if c_output == python_output:
         print("Test passed: C and Python implementations produce the same result.")
+        return True
     else:
         print("Test failed: C and Python implementations produce different results.")
+        return False
 
 
 def test_add_round_key_128():
@@ -122,12 +128,53 @@ def test_add_round_key_128():
     # Compare the results
     if c_output == expected_output:
         print("Test passed: add_round_key produced the expected XOR result.")
+        return True
     else:
         print("Test failed: add_round_key did not produce the expected XOR result.")
+        return False
 
-    # Execute the test
+
+def test_expand_key_128():
+    print("Testing expand_key for AES-128: ")
+
+    # Deterministic AES-128 key (16 bytes)
+    cipher_key = bytes(range(16))
+
+    # Configure ctypes signature for expand_key.
+    rijndael.expand_key.argtypes = [ctypes.c_char_p, ctypes.c_int]
+    rijndael.expand_key.restype = ctypes.POINTER(ctypes.c_ubyte)
+
+    # Call C expand_key (AES_BLOCK_128 = 0)
+    expanded_key_ptr = rijndael.expand_key(cipher_key, 0)
+    c_output = list(ctypes.string_at(expanded_key_ptr, 176))
+
+    # Build expected 176-byte expanded key using Python reference implementation.
+    python_aes = aes.AES(cipher_key)
+    python_output = []
+    for round_key in python_aes._key_matrices:
+        for word in round_key:
+            python_output.extend(word)
+
+    # Compare the results
+    if c_output == python_output:
+        print("Test passed: C and Python key expansion outputs match.")
+        return True
+    else:
+        print("Test failed: C and Python key expansion outputs differ.")
+        return False
+
 if __name__ == "__main__":
-    test_sub_bytes_128()
-    test_shift_rows_128()
-    test_mix_columns_128()
-    test_add_round_key_128()
+    results = [
+        test_sub_bytes_128(),
+        test_shift_rows_128(),
+        test_mix_columns_128(),
+        test_add_round_key_128(),
+        test_expand_key_128(),
+    ]
+
+    if all(results):
+        print("All tests passed.")
+        sys.exit(0)
+
+    print("One or more tests failed.")
+    sys.exit(1)
