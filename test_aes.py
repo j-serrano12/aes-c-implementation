@@ -238,6 +238,39 @@ def test_aes_encrypt_block_256():
     print("Test passed: aes_encrypt_block matches the known AES_BLOCK_256 vector.")
     return True
 
+# Finally, we will test our aes_encrypt_block function for AES-512, using a known plaintext, key, and expected ciphertext from the AES-512 test vectors. The plaintext and key will both be 64 bytes long, and the expected ciphertext will be "4699dab747a42189f9e4746ce66ca73b9dd0f28ff6e4dc2504702b0207fe8b5a8a29b0f236134e442043bd68accc81b4aecb5bbecfad0ea29aeb724a4f08c51a". We will compare the output of our C implementation to the known test vector to ensure correctness.
+def test_aes_encrypt_block_512():
+    print("Testing aes_encrypt_block for AES_BLOCK_512: ")
+
+    plaintext = bytes(range(64))
+    key = bytes(range(64))
+
+    rijndael.aes_encrypt_block.argtypes = [
+        ctypes.POINTER(ctypes.c_ubyte),
+        ctypes.POINTER(ctypes.c_ubyte),
+        ctypes.c_int,
+    ]
+    rijndael.aes_encrypt_block.restype = ctypes.POINTER(ctypes.c_ubyte)
+
+    pt_buf = (ctypes.c_ubyte * 64).from_buffer_copy(plaintext)
+    key_buf = (ctypes.c_ubyte * 64).from_buffer_copy(key)
+
+    c_output_ptr = rijndael.aes_encrypt_block(pt_buf, key_buf, 2)
+    
+
+    c_output = bytes(c_output_ptr[i] for i in range(64))
+    known_output = bytes.fromhex("4699dab747a42189f9e4746ce66ca73b9dd0f28ff6e4dc2504702b0207fe8b5a8a29b0f236134e442043bd68accc81b4aecb5bbecfad0ea29aeb724a4f08c51a")
+
+    ctypes.CDLL(None).free.argtypes = [ctypes.c_void_p]
+    ctypes.CDLL(None).free(c_output_ptr)
+
+    if c_output != known_output:
+        print("Test failed: aes_encrypt_block does not match the known AES_BLOCK_512 vector.")
+        return False
+
+    print("Test passed: aes_encrypt_block matches the known AES_BLOCK_512 vector.")
+    return True
+
 
 
 
@@ -250,6 +283,7 @@ if __name__ == "__main__":
         test_expand_key_128(),
         test_aes_encrypt_block_128(),
         test_aes_encrypt_block_256(),
+        test_aes_encrypt_block_512(),
     ]
 
     if all(results):
