@@ -361,9 +361,39 @@ unsigned char *expand_key(unsigned char *cipher_key, aes_block_size_t block_size
 unsigned char *aes_encrypt_block(unsigned char *plaintext,
                                  unsigned char *key,
                                  aes_block_size_t block_size) {
-  // TODO: Implement me!
-  unsigned char *output =
-      (unsigned char *)malloc(sizeof(unsigned char) * block_size_to_bytes(block_size));
+  // first we will determine the number of bytes in our block, the number of words in our key, the number of words in our block, and the number of rounds we need to perform based on the key size and block size.
+  const size_t total_bytes = block_size_to_bytes(block_size);
+  const size_t nk = total_bytes / 4;
+  const size_t nb = total_bytes / 4;
+  const size_t nr = ((nk > nb) ? nk : nb) + 6;
+
+  // now we will allocate memory for our output, which will be the same size as our block. We will return this output at the end of the function, after we have encrypted our plaintext.
+  unsigned char *output = (unsigned char *)malloc(total_bytes);
+  if (output == NULL) {
+    return NULL;
+  }
+  // now we will expand our key, which will give us all the round keys that we need to perform our encryption. We will use the expand_key function that we defined above to do this. The expanded key will be (nr + 1) * total_bytes bytes long, since we need to generate nr round keys plus the original key.
+  unsigned char *expanded_key = expand_key(key, block_size);
+  if (expanded_key == NULL) {
+    free(output);
+    return NULL;
+  }
+  // here we will perform the initial round of our encryption, which is just adding the round key to our plaintext. We will use the add_round_key function that we defined above to do this. The first round key is just the original key, which is the first total_bytes bytes of our expanded key.
+  memcpy(output, plaintext, total_bytes);
+  add_round_key(output, expanded_key, block_size);
+  // now we will perform the main rounds of our encryption, which consist of the sub_bytes, shift_rows, mix_columns, and add_round_key steps. We will loop through each round, and perform these steps in order. The round keys for these rounds are stored in our expanded key, starting from the second total_bytes bytes (since the first total_bytes bytes is the original key).
+  for (size_t round = 1; round < nr; round++) {
+    sub_bytes(output, block_size);
+    shift_rows(output, block_size);
+    mix_columns(output, block_size);
+    add_round_key(output, expanded_key + (round * total_bytes), block_size);
+  }
+  // finally, we will perform the last round of our encryption, which is just the sub_bytes, shift_rows, and add_round_key steps (no mix_columns in the last round). The round key for this round is stored in the last total_bytes bytes of our expanded key.
+  sub_bytes(output, block_size);
+  shift_rows(output, block_size);
+  add_round_key(output, expanded_key + (nr * total_bytes), block_size);
+  // we then free the memory that we allocated for our expanded key, since we no longer need it, and we return our output, which is the encrypted block.
+  free(expanded_key);
   return output;
 }
 

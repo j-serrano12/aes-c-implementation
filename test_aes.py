@@ -164,6 +164,48 @@ def test_expand_key_128():
         return False
 
 
+def test_aes_encrypt_block_128():
+    print("Testing aes_encrypt_block for AES-128: ")
+    # here we will test our aes_encrypt_block function by encrypting a known plaintext with a known key, and comparing the output to both the Python implementation and a known AES-128 test vector.", which should produce the ciphertext "0a940bb5416ef045f1c39458c653ea5a" according to the AES-128 test vectors. We will also compare the output of our C implementation to the output of the Python implementation to ensure they match.
+    plaintext = bytes(range(16))
+    key = bytes(range(16))
+    # Configure ctypes signature for aes_encrypt_block.
+    rijndael.aes_encrypt_block.argtypes = [
+        ctypes.POINTER(ctypes.c_ubyte),
+        ctypes.POINTER(ctypes.c_ubyte),
+        ctypes.c_int,
+    ]
+
+    rijndael.aes_encrypt_block.restype = ctypes.POINTER(ctypes.c_ubyte)
+    # We will create ctypes buffers for our plaintext and key, which will allow us to pass them to our C function. We will use from_buffer_copy to create a new buffer that contains the same data as our original bytes objects.
+    pt_buf = (ctypes.c_ubyte * 16).from_buffer_copy(plaintext)
+    key_buf = (ctypes.c_ubyte * 16).from_buffer_copy(key)
+    # Now we will call our C function to encrypt the block, and we will get a pointer to the ciphertext output. We will then read 16 bytes from that pointer to get our ciphertext as a bytes object.
+    c_output_ptr = rijndael.aes_encrypt_block(pt_buf, key_buf, 0)
+    if not c_output_ptr:
+        print("Test failed: aes_encrypt_block returned NULL.")
+        return False
+
+    c_output = bytes(c_output_ptr[i] for i in range(16))
+
+    python_output = aes.AES(key).encrypt_block(plaintext)
+    known_output = bytes.fromhex("0a940bb5416ef045f1c39458c653ea5a")
+    # Since our C function allocates memory for the output, we need to free that memory after we are done with it. We can use the free function from the C standard library to do this. We will configure the argument types for free to ensure it is called correctly.
+    ctypes.CDLL(None).free.argtypes = [ctypes.c_void_p]
+    ctypes.CDLL(None).free(c_output_ptr)
+
+    if c_output != python_output:
+        print("Test failed: C and Python aes_encrypt_block outputs differ.")
+        return False
+
+    if c_output != known_output:
+        print("Test failed: aes_encrypt_block does not match the known AES-128 vector.")
+        return False
+
+    print("Test passed: aes_encrypt_block matches Python and the known AES-128 vector.")
+    return True
+
+
 
 
 if __name__ == "__main__":
@@ -171,7 +213,9 @@ if __name__ == "__main__":
         test_sub_bytes_128(),
         test_shift_rows_128(),
         test_mix_columns_128(),
-        test_add_round_key_128()
+        test_add_round_key_128(),
+        test_expand_key_128(),
+        test_aes_encrypt_block_128(),
     ]
 
     if all(results):
