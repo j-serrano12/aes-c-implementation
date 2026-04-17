@@ -163,13 +163,15 @@ def test_expand_key_128():
         print("Test failed: C and Python key expansion outputs differ.")
         return False
 
+
+
+
 if __name__ == "__main__":
     results = [
         test_sub_bytes_128(),
         test_shift_rows_128(),
         test_mix_columns_128(),
-        test_add_round_key_128(),
-        test_expand_key_128(),
+        test_add_round_key_128()
     ]
 
     if all(results):

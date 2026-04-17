@@ -116,33 +116,22 @@ void sub_bytes(unsigned char *block, aes_block_size_t block_size) {
 //  We aew going to immplement the shift rows function by shifting the rows of our block to the left by a certain amount. The first row is not shifted, the second row is shifted by 1, the third row is shifted by 2, and the fourth row is shifted by 3. This is done to create diffusion in our block, which makes it more resistant to cryptanalysis.
 
 void shift_rows(unsigned char *block, aes_block_size_t block_size) {
-  // Focusing on the 128 bit first
+  // based on the provided block_size_to_bytes, we can figure out how many columns are in our block (4, 8, or 16), and we will use that to determine how much to shift each row by. the buffer is used to store the values of the row before we shift them, so that we can shift them correctly without overwriting values that we still need to shift.
+  size_t columns = block_size_to_bytes(block_size) / 4;
+  unsigned char row_buffer[16];
 
-  if(block_size == AES_BLOCK_128){
-    unsigned char temp, temp2;
+  // here we will loop through each row of our block, and shift it to the left by the appropriate amount. 
+  // Row 0 is unchanged. Rows 1 is rotated left by 1, row 2 is rotated left by 2, and row 3 is rotated left by 3.
+  for (size_t row = 1; row < 4; row++) {
+    size_t shift = row % columns;
+    // We will first copy the values of the row into our buffer, and then we will copy them back into the block in the shifted positions.
+    for (size_t col = 0; col < columns; col++) {
+      row_buffer[col] = block[row + (4 * col)];
+    }
 
-    // First row is not shifted.
-    // Second row is shifted by 1 to the left across columns.
-    temp = block[1];
-    block[1] = block[5];
-    block[5] = block[9];
-    block[9] = block[13];
-    block[13] = temp;
-
-    // Third row is shifted by 2 to the left.
-    temp = block[2];
-    temp2 = block[6];
-    block[2] = block[10];
-    block[6] = block[14];
-    block[10] = temp;
-    block[14] = temp2;
-
-    // Fourth row is shifted by 3 to the left (same as 1 right).
-    temp = block[3];
-    block[3] = block[15];
-    block[15] = block[11];
-    block[11] = block[7];
-    block[7] = temp;
+    for (size_t col = 0; col < columns; col++) {
+      block[row + (4 * col)] = row_buffer[(col + shift) % columns];
+    }
   }
 }
 
@@ -199,33 +188,21 @@ void invert_sub_bytes(unsigned char *block, aes_block_size_t block_size) {
 
 // This will be the opposite of the shift rows function, so we will shift the rows to the right instead of to the left
 void invert_shift_rows(unsigned char *block, aes_block_size_t block_size) {
-  // Focusing on the 128 bit first
+  // based on the provided block_size_to_bytes, we can figure out how many columns are in our block (4, 8, or 16), and we will use that to determine how much to shift each row by.
+  size_t columns = block_size_to_bytes(block_size) / 4;
+  unsigned char row_buffer[16];
 
-  if(block_size == AES_BLOCK_128){
-    unsigned char temp, temp2;
+  // just as in shift_rows, we will loop through each row of our block, and shift it to the right by the appropriate amount.
+  for (size_t row = 1; row < 4; row++) {
+    size_t shift = row % columns;
 
-    // First row is not shifted.
-    // Second row is shifted by 1 to the right across columns.
-    temp = block[13];
-    block[13] = block[9];
-    block[9] = block[5];
-    block[5] = block[1];
-    block[1] = temp;
+    for (size_t col = 0; col < columns; col++) {
+      row_buffer[col] = block[row + (4 * col)];
+    }
 
-    // Third row is shifted by 2 to the right.
-    temp = block[2];
-    temp2 = block[6];
-    block[2] = block[10];
-    block[6] = block[14];
-    block[10] = temp;
-    block[14] = temp2;
-
-    // Fourth row is shifted by 3 to the right (same as 1 left).
-    temp = block[3];
-    block[3] = block[7];
-    block[7] = block[11];
-    block[11] = block[15];
-    block[15] = temp;
+    for (size_t col = 0; col < columns; col++) {
+      block[row + (4 * col)] = row_buffer[(col + columns - shift) % columns];
+    }
   }
 }
 
@@ -312,39 +289,36 @@ void add_round_key(unsigned char *block,
  */
 // I am basing this on the following youtube video, which explains the key expansion algorithm in detail: https://www.youtube.com/watch?v=0RxLUf4fxs8
 unsigned char *expand_key(unsigned char *cipher_key, aes_block_size_t block_size) {
-  // For this function, we will only implement the 128 bit key expansion for now
-  if (block_size != AES_BLOCK_128) {
-    return NULL;
-  }
-  // The key expansion algorithm is as follows:
-  // The constant rcon is used in the key expansion algorithm, and it is defined as follows
-  static const unsigned char rcon[10] = {
-    0x01, 0x02, 0x04, 0x08, 0x10,
-    0x20, 0x40, 0x80, 0x1B, 0x36
-  };
-  // We will create an array to hold our expanded key, which will be 176 bytes long (11 round keys * 16 bytes each)
-  const size_t expanded_len = 176; // 11 round keys * 16 bytes
+  //here we will first determine the number of bytes in our key, the number of words in our key, the number of words in our block, and the number of rounds we need to perform based on the key size and block size.
+  const size_t key_bytes = block_size_to_bytes(block_size);
+  const size_t nk = key_bytes / 4;  // key words
+  const size_t nb = key_bytes / 4;  // block words
+  const size_t nr = ((nk > nb) ? nk : nb) + 6;
+  const size_t expanded_len = (nr + 1) * key_bytes;
+// We will allocate memory for our expanded key, which will be (nr + 1) * key_bytes bytes long, since we need to generate nr round keys plus the original key.
   unsigned char *expanded_key = (unsigned char *)malloc(expanded_len);
   if (expanded_key == NULL) {
     return NULL;
   }
+  // We will first copy our original key into the first key_bytes bytes of our expanded key, since the first round key is just the original key.
+  memcpy(expanded_key, cipher_key, key_bytes);
 
-  // First 16 bytes are the original cipher key.
-  memcpy(expanded_key, cipher_key, 16);
-  // We will keep track of how many bytes we have generated so far, and we will generate bytes until we have generated the full expanded key.
-  size_t bytes_generated = 16;
-  size_t rcon_index = 0;
+  // here we will generate the rest of our expanded key, by looping until we have generated enough bytes for all our round keys. We will generate 4 bytes at a time, since each word is 4 bytes long.
+  size_t bytes_generated = key_bytes;
+  // rcon is the round constant, which is used in the key expansion algorithm. It starts at 0x01, and is multiplied by 2 in the Galois field for each round. We will use the xtime macro defined above to multiply it by 2.
+  unsigned char rcon = 0x01;
   unsigned char temp[4];
-  // We will generate 4 bytes at a time, since our round keys are 16 bytes long, and we need to generate 11 round keys (including the original key).
+  // We will generate 4 bytes at a time.
   while (bytes_generated < expanded_len) {
     // We will take the last 4 bytes of the expanded key, and store it in a temporary array.
     temp[0] = expanded_key[bytes_generated - 4];
     temp[1] = expanded_key[bytes_generated - 3];
     temp[2] = expanded_key[bytes_generated - 2];
     temp[3] = expanded_key[bytes_generated - 1];
-    // If we have generated a multiple of 16 bytes, then we will perform the key schedule core on our temporary array, which involves rotating the bytes, applying the s-box, and XORing with the rcon value.
-    // This is also known as the g function in the key expansion algorithm.
-    if ((bytes_generated % 16) == 0) {
+
+    size_t word_index = bytes_generated / 4;
+    // here we will perform the key expansion algorithm on our temporary array, which will be used to generate the next 4 bytes of our expanded key. The key expansion algorithm has two main steps: the RotWord step, which rotates the bytes in the word to the left, and the SubWord step, which applies the s-box to each byte in the word. 
+    if ((word_index % nk) == 0) {
       unsigned char rotated = temp[0];
       temp[0] = temp[1];
       temp[1] = temp[2];
@@ -356,19 +330,27 @@ unsigned char *expand_key(unsigned char *cipher_key, aes_block_size_t block_size
       temp[2] = sbox[temp[2]];
       temp[3] = sbox[temp[3]];
 
-      temp[0] ^= rcon[rcon_index++];
+      temp[0] ^= rcon;
+      rcon = xtime(rcon);
+    } else if (nk > 6 && ((word_index % nk) == 4)) {
+      // here we will perform the SubWord step on our temporary array, which is just applying the s-box to each byte in the word. This step is only performed if our key has more than 6 words (256-bit key)
+      temp[0] = sbox[temp[0]];
+      temp[1] = sbox[temp[1]];
+      temp[2] = sbox[temp[2]];
+      temp[3] = sbox[temp[3]];
     }
-    // We will then XOR the temporary array with the 4 bytes that are 16 bytes before the current position in the expanded key, and store the result in the expanded key.
-    expanded_key[bytes_generated] = expanded_key[bytes_generated - 16] ^ temp[0];
+
+    // finally, we will XOR the temporary array with the word that is nk words before the current word, and store the result in our expanded key. This will generate the next 4 bytes of our expanded key.
+    expanded_key[bytes_generated] = expanded_key[bytes_generated - key_bytes] ^ temp[0];
     bytes_generated++;
-    expanded_key[bytes_generated] = expanded_key[bytes_generated - 16] ^ temp[1];
+    expanded_key[bytes_generated] = expanded_key[bytes_generated - key_bytes] ^ temp[1];
     bytes_generated++;
-    expanded_key[bytes_generated] = expanded_key[bytes_generated - 16] ^ temp[2];
+    expanded_key[bytes_generated] = expanded_key[bytes_generated - key_bytes] ^ temp[2];
     bytes_generated++;
-    expanded_key[bytes_generated] = expanded_key[bytes_generated - 16] ^ temp[3];
+    expanded_key[bytes_generated] = expanded_key[bytes_generated - key_bytes] ^ temp[3];
     bytes_generated++;
   }
-  // Once we have generated the full expanded key, we will return it.
+  // now we have generated all the round keys, and we can return our expanded key.
   return expanded_key;
 }
 
