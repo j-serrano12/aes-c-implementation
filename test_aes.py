@@ -271,6 +271,172 @@ def test_aes_encrypt_block_512():
     print("Test passed: aes_encrypt_block matches the known AES_BLOCK_512 vector.")
     return True
 
+# We will test our aes_decrypt_block function for AES-128 by encrypting a known plaintext with a known key using our aes_encrypt_block function, and then decrypting the resulting ciphertext with our aes_decrypt_block function. We will compare the decrypted output to the original plaintext to ensure that the round-trip encryption and decryption works correctly. We will also test our aes_decrypt_block function against a known AES-128 test vector, where we will decrypt a known ciphertext with a known key and compare the output to the expected plaintext.
+def test_aes_decrypt_block_128():
+    print("Testing aes_decrypt_block for AES-128: ")
+
+    plaintext = bytes(range(16))
+    key = bytes(range(16))
+    known_ciphertext = bytes.fromhex("0a940bb5416ef045f1c39458c653ea5a")
+
+    rijndael.aes_encrypt_block.argtypes = [
+        ctypes.POINTER(ctypes.c_ubyte),
+        ctypes.POINTER(ctypes.c_ubyte),
+        ctypes.c_int,
+    ]
+    rijndael.aes_encrypt_block.restype = ctypes.POINTER(ctypes.c_ubyte)
+    rijndael.aes_decrypt_block.argtypes = [
+        ctypes.POINTER(ctypes.c_ubyte),
+        ctypes.POINTER(ctypes.c_ubyte),
+        ctypes.c_int,
+    ]
+    rijndael.aes_decrypt_block.restype = ctypes.POINTER(ctypes.c_ubyte)
+
+    pt_buf = (ctypes.c_ubyte * 16).from_buffer_copy(plaintext)
+    key_buf = (ctypes.c_ubyte * 16).from_buffer_copy(key)
+
+    c_cipher_ptr = rijndael.aes_encrypt_block(pt_buf, key_buf, 0)
+    
+
+    c_cipher = bytes(c_cipher_ptr[i] for i in range(16))
+    c_cipher_buf = (ctypes.c_ubyte * 16).from_buffer_copy(c_cipher)
+    c_decrypted_ptr = rijndael.aes_decrypt_block(c_cipher_buf, key_buf, 0)
+   
+
+    c_decrypted = bytes(c_decrypted_ptr[i] for i in range(16))
+
+    
+    known_cipher_buf = (ctypes.c_ubyte * 16).from_buffer_copy(known_ciphertext)
+    known_decrypted_ptr = rijndael.aes_decrypt_block(known_cipher_buf, key_buf, 0)
+   
+
+    known_decrypted = bytes(known_decrypted_ptr[i] for i in range(16))
+
+    ctypes.CDLL(None).free.argtypes = [ctypes.c_void_p]
+    ctypes.CDLL(None).free(c_cipher_ptr)
+    ctypes.CDLL(None).free(c_decrypted_ptr)
+    ctypes.CDLL(None).free(known_decrypted_ptr)
+
+    if c_decrypted != plaintext:
+        print("Test failed: round-trip decrypt output does not match original plaintext.")
+        return False
+
+    if known_decrypted != plaintext:
+        print("Test failed: aes_decrypt_block does not match the known AES-128 vector.")
+        return False
+
+    print("Test passed: aes_decrypt_block round-trip and known AES-128 vector checks succeeded.")
+    return True
+
+# We will test our aes_decrypt_block function for AES-256 by encrypting a known plaintext with a known key using our aes_encrypt_block function, and then decrypting the resulting ciphertext with our aes_decrypt_block function. We will compare the decrypted output to the original plaintext to ensure that the round-trip encryption and decryption works correctly. We will also test our aes_decrypt_block function against a known AES-256 test vector, where we will decrypt a known ciphertext with a known key and compare the output to the expected plaintext.
+def test_aes_decrypt_block_256():
+    print("Testing aes_decrypt_block for AES_BLOCK_256: ")
+
+    plaintext = bytes(range(32))
+    key = bytes(range(32))
+    known_ciphertext = bytes.fromhex("6760ba39d092c7713caf8a8b94f7ef33bc0dbe7281d33917ccfc0c2f59a3f2a3")
+
+    rijndael.aes_encrypt_block.argtypes = [
+        ctypes.POINTER(ctypes.c_ubyte),
+        ctypes.POINTER(ctypes.c_ubyte),
+        ctypes.c_int,
+    ]
+    rijndael.aes_encrypt_block.restype = ctypes.POINTER(ctypes.c_ubyte)
+    rijndael.aes_decrypt_block.argtypes = [
+        ctypes.POINTER(ctypes.c_ubyte),
+        ctypes.POINTER(ctypes.c_ubyte),
+        ctypes.c_int,
+    ]
+    rijndael.aes_decrypt_block.restype = ctypes.POINTER(ctypes.c_ubyte)
+
+    pt_buf = (ctypes.c_ubyte * 32).from_buffer_copy(plaintext)
+    key_buf = (ctypes.c_ubyte * 32).from_buffer_copy(key)
+
+    c_cipher_ptr = rijndael.aes_encrypt_block(pt_buf, key_buf, 1)
+
+    c_cipher = bytes(c_cipher_ptr[i] for i in range(32))
+    c_cipher_buf = (ctypes.c_ubyte * 32).from_buffer_copy(c_cipher)
+    c_decrypted_ptr = rijndael.aes_decrypt_block(c_cipher_buf, key_buf, 1)
+
+    c_decrypted = bytes(c_decrypted_ptr[i] for i in range(32))
+
+    known_cipher_buf = (ctypes.c_ubyte * 32).from_buffer_copy(known_ciphertext)
+    known_decrypted_ptr = rijndael.aes_decrypt_block(known_cipher_buf, key_buf, 1)
+
+    known_decrypted = bytes(known_decrypted_ptr[i] for i in range(32))
+
+    ctypes.CDLL(None).free.argtypes = [ctypes.c_void_p]
+    ctypes.CDLL(None).free(c_cipher_ptr)
+    ctypes.CDLL(None).free(c_decrypted_ptr)
+    ctypes.CDLL(None).free(known_decrypted_ptr)
+
+    if c_decrypted != plaintext:
+        print("Test failed: round-trip decrypt output does not match original plaintext.")
+        return False
+
+    if known_decrypted != plaintext:
+        print("Test failed: aes_decrypt_block does not match the known AES_BLOCK_256 vector.")
+        return False
+
+    print("Test passed: aes_decrypt_block round-trip and known AES_BLOCK_256 vector checks succeeded.")
+    return True
+
+# We will test our aes_decrypt_block function for AES-256 by encrypting a known plaintext with a known key using our aes_encrypt_block function, and then decrypting the resulting ciphertext with our aes_decrypt_block function. We will compare the decrypted output to the original plaintext to ensure that the round-trip encryption and decryption works correctly. We will also test our aes_decrypt_block function against a known AES-256 test vector, where we will decrypt a known ciphertext with a known key and compare the output to the expected plaintext.
+def test_aes_decrypt_block_512():
+    print("Testing aes_decrypt_block for AES_BLOCK_512: ")
+
+    plaintext = bytes(range(64))
+    key = bytes(range(64))
+    known_ciphertext = bytes.fromhex("4699dab747a42189f9e4746ce66ca73b9dd0f28ff6e4dc2504702b0207fe8b5a8a29b0f236134e442043bd68accc81b4aecb5bbecfad0ea29aeb724a4f08c51a")
+
+    rijndael.aes_encrypt_block.argtypes = [
+        ctypes.POINTER(ctypes.c_ubyte),
+        ctypes.POINTER(ctypes.c_ubyte),
+        ctypes.c_int,
+    ]
+    rijndael.aes_encrypt_block.restype = ctypes.POINTER(ctypes.c_ubyte)
+    rijndael.aes_decrypt_block.argtypes = [
+        ctypes.POINTER(ctypes.c_ubyte),
+        ctypes.POINTER(ctypes.c_ubyte),
+        ctypes.c_int,
+    ]
+    rijndael.aes_decrypt_block.restype = ctypes.POINTER(ctypes.c_ubyte)
+
+    pt_buf = (ctypes.c_ubyte * 64).from_buffer_copy(plaintext)
+    key_buf = (ctypes.c_ubyte * 64).from_buffer_copy(key)
+
+    c_cipher_ptr = rijndael.aes_encrypt_block(pt_buf, key_buf, 2)
+   
+
+    c_cipher = bytes(c_cipher_ptr[i] for i in range(64))
+    c_cipher_buf = (ctypes.c_ubyte * 64).from_buffer_copy(c_cipher)
+    c_decrypted_ptr = rijndael.aes_decrypt_block(c_cipher_buf, key_buf, 2)
+  
+
+    c_decrypted = bytes(c_decrypted_ptr[i] for i in range(64))
+
+    known_cipher_buf = (ctypes.c_ubyte * 64).from_buffer_copy(known_ciphertext)
+    known_decrypted_ptr = rijndael.aes_decrypt_block(known_cipher_buf, key_buf, 2)
+    
+
+    known_decrypted = bytes(known_decrypted_ptr[i] for i in range(64))
+
+    ctypes.CDLL(None).free.argtypes = [ctypes.c_void_p]
+    ctypes.CDLL(None).free(c_cipher_ptr)
+    ctypes.CDLL(None).free(c_decrypted_ptr)
+    ctypes.CDLL(None).free(known_decrypted_ptr)
+
+    if c_decrypted != plaintext:
+        print("Test failed: round-trip decrypt output does not match original plaintext.")
+        return False
+
+    if known_decrypted != plaintext:
+        print("Test failed: aes_decrypt_block does not match the known AES_BLOCK_512 vector.")
+        return False
+
+    print("Test passed: aes_decrypt_block round-trip and known AES_BLOCK_512 vector checks succeeded.")
+    return True
+
 
 
 
@@ -284,6 +450,9 @@ if __name__ == "__main__":
         test_aes_encrypt_block_128(),
         test_aes_encrypt_block_256(),
         test_aes_encrypt_block_512(),
+        test_aes_decrypt_block_128(),
+        test_aes_decrypt_block_256(),
+        test_aes_decrypt_block_512(),
     ]
 
     if all(results):

@@ -400,8 +400,38 @@ unsigned char *aes_encrypt_block(unsigned char *plaintext,
 unsigned char *aes_decrypt_block(unsigned char *ciphertext,
                                  unsigned char *key,
                                  aes_block_size_t block_size) {
-  // TODO: Implement me!
-  unsigned char *output =
-      (unsigned char *)malloc(sizeof(unsigned char) * block_size_to_bytes(block_size));
+  // first we will determine the number of bytes in our block, the number of words in our key, the number of words in our block, and the number of rounds we need to perform based on the key size and block size.
+  const size_t total_bytes = block_size_to_bytes(block_size);
+  const size_t nk = total_bytes / 4;
+  const size_t nb = total_bytes / 4;
+  const size_t nr = ((nk > nb) ? nk : nb) + 6;
+   // now we will allocate memory for our output, which will be the same size as our block. We will return this output at the end of the function, after we have decrypted our ciphertext.                               
+  unsigned char *output = (unsigned char *)malloc(total_bytes);
+  if (output == NULL) {
+    return NULL;
+  }
+  // now we will expand our key, which will give us all the round keys that we need to perform our decryption. We will use the expand_key function that we defined above to do this. The expanded key will be (nr + 1) * total_bytes bytes long, since we need to generate nr round keys plus the original key.
+  unsigned char *expanded_key = expand_key(key, block_size);
+  if (expanded_key == NULL) {
+    free(output);
+    return NULL;
+  }
+  // here we will perform the initial round of our decryption, which is just adding the round key to our ciphertext. We will use the add_round_key function that we defined above to do this. The first round key is just the original key, which is the first total_bytes bytes of our expanded key.
+  memcpy(output, ciphertext, total_bytes);
+ 
+  add_round_key(output, expanded_key + (nr * total_bytes), block_size);
+  invert_shift_rows(output, block_size);
+  invert_sub_bytes(output, block_size);
+  // now we will perform the main rounds of our decryption, which consist of the invert_mix_columns, invert_shift_rows, invert_sub_bytes, and add_round_key steps. We will loop through each round in reverse order, and perform these steps in order. The round keys for these rounds are stored in our expanded key, starting from the second to last total_bytes bytes (since the last total_bytes bytes is the round key for the initial round).
+  for (size_t round = nr - 1; round > 0; round--) {
+    add_round_key(output, expanded_key + (round * total_bytes), block_size);
+    invert_mix_columns(output, block_size);
+    invert_shift_rows(output, block_size);
+    invert_sub_bytes(output, block_size);
+  }
+
+  add_round_key(output, expanded_key, block_size);
+  // we then free the memory that we allocated for our expanded key, since we no longer need it, and we return our output, which is the decrypted block.
+  free(expanded_key);
   return output;
 }
