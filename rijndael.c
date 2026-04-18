@@ -1,6 +1,9 @@
 /*
- * TODO: Add your name and student number here, along with
- *       a brief description of this code.
+ * Name: Juan Serrano
+ * Student Number: A00049428
+ *  Rijndael block cipher implementation for the assignment,
+ *  including key expansion, round operations, encryption,
+ *  and decryption.
  */
 
 #include <stdio.h>

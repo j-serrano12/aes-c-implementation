@@ -1,6 +1,8 @@
 /*
- * TODO: Add your name and student number here, along with
- *       a brief description of this code.
+ * Name: Juan Serrano
+ * Student Number: A00049428
+ * Header declarations for the Rijndael assignment implementation,
+ * including block-size options and encrypt/decrypt entry points.
  */
 
 #ifndef RIJNDAEL_H
